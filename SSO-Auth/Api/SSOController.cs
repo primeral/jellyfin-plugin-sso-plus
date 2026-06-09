@@ -333,7 +333,7 @@ public class SSOController : ControllerBase
             if (timedState.Valid)
             {
                 _logger.LogInformation($"Is request linking: {isLinking}");
-                return Content(WebResponse.Generator(data: state, provider: provider, baseUrl: GetRequestBase(config.SchemeOverride, config.PortOverride), mode: "OID", isLinking: isLinking), MediaTypeNames.Text.Html);
+                return Content(WebResponse.Generator(data: state, provider: provider, baseUrl: GetRequestBase(config.SchemeOverride, config.PortOverride), mode: "OID", isLinking: isLinking, quickConnectCode: timedState.QuickConnectCode), MediaTypeNames.Text.Html);
             }
             else
             {
@@ -356,10 +356,11 @@ public class SSOController : ControllerBase
     /// </summary>
     /// <param name="provider">The name of the provider.</param>
     /// <param name="isLinking">Whether or not this request is to link accounts (Rather than authenticate).</param>
+    /// <param name="qc">Optional Jellyfin Quick Connect code to prefill after authentication.</param>
     /// <returns>An asynchronous result for the authentication.</returns>
     [HttpGet("OID/p/{provider}")]
     [HttpGet("OID/start/{provider}")]
-    public async Task<ActionResult> OidChallenge(string provider, [FromQuery] bool isLinking = false)
+    public async Task<ActionResult> OidChallenge(string provider, [FromQuery] bool isLinking = false, [FromQuery] string qc = null)
     {
         Invalidate();
         OidConfig config;
@@ -421,6 +422,7 @@ public class SSOController : ControllerBase
 
             // Track whether this is a linking request or not.
             StateManager[state.State].IsLinking = isLinking;
+            StateManager[state.State].QuickConnectCode = qc;
             return Redirect(state.StartUrl);
         }
 
@@ -1405,6 +1407,11 @@ public class TimedAuthorizeState
     /// tied to a linking flow (instead of a login flow).
     /// </summary>
     public bool IsLinking { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Jellyfin Quick Connect code to prefill after authentication.
+    /// </summary>
+    public string QuickConnectCode { get; set; }
 
     /// <summary>
     /// Gets or sets the folders the user is allowed access to.
